@@ -27,9 +27,6 @@ const AppContent: React.FC = () => {
     }
   }, [currentInterview, dispatch])
 
-  const handleTabChange = (tab: 'interviewee' | 'interviewer') => {
-    dispatch(setActiveTab(tab))
-  }
 
   return (
     <div className="app-container">

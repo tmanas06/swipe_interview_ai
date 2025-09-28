@@ -13,12 +13,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
   const [isSubmitting, setIsSubmitting] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const currentAnswerRef = useRef('')
 
   const currentQuestion = interview.questions[interview.currentQuestionIndex]
   const isInterviewComplete = interview.currentQuestionIndex >= interview.questions.length
 
+  // Update ref when currentAnswer changes
   useEffect(() => {
-    if (currentQuestion && !isInterviewComplete) {
+    currentAnswerRef.current = currentAnswer
+  }, [currentAnswer])
+
+  useEffect(() => {
+    if (currentQuestion && !isInterviewComplete && !currentQuestion.answer) {
       setTimeLeft(currentQuestion.timeLimit)
       setCurrentAnswer('')
       
@@ -26,32 +32,51 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            // Time's up, auto-submit
+            // Time's up, auto-submit with current answer
             handleSubmitAnswer()
             return 0
           }
           return prev - 1
         })
       }, 1000)
+    } else {
+      // Clear timer if question is answered or interview is complete
+      setTimeLeft(0)
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
     }
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
+        timerRef.current = null
       }
     }
-  }, [currentQuestion, interview.currentQuestionIndex])
+  }, [currentQuestion, interview.currentQuestionIndex, isInterviewComplete])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [interview.questions])
 
   const handleSubmitAnswer = async () => {
-    if (!currentAnswer.trim() || isSubmitting) return
+    if (isSubmitting || !currentQuestion || currentQuestion.answer) return
 
     setIsSubmitting(true)
-    await onAnswerSubmit(currentAnswer.trim())
+    
+    // Clear timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    
+    // Submit answer (even if empty)
+    const answerToSubmit = currentAnswerRef.current.trim() || ''
+    await onAnswerSubmit(answerToSubmit)
+    
     setIsSubmitting(false)
+    setCurrentAnswer('')
   }
 
   const formatTime = (seconds: number) => {
@@ -117,7 +142,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
 
       {/* Chat Messages */}
       <div className="chat-messages">
-        {interview.questions.map((question, index) => (
+        {/* Show all answered questions */}
+        {interview.questions.slice(0, interview.currentQuestionIndex).map((question, index) => (
           <div key={question.id}>
             {/* Question */}
             <div className="message bot">
@@ -174,8 +200,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
           </div>
         ))}
 
-        {/* Current Question Input */}
-        {currentQuestion && !currentQuestion.answer && (
+        {/* Current Question */}
+        {currentQuestion && !currentQuestion.answer && !isInterviewComplete && (
           <div className="message bot">
             <div className="message-content">
               <div className="question-card">
@@ -210,61 +236,72 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
               <textarea
                 value={currentAnswer}
                 onChange={(e) => setCurrentAnswer(e.target.value)}
-                placeholder="Type your answer here..."
+                placeholder={timeLeft > 0 ? "Type your answer here..." : "Time's up! Answer locked."}
                 style={{
                   flex: 1,
                   padding: '16px 20px',
-                  border: '2px solid rgba(0, 0, 0, 0.08)',
+                  border: timeLeft > 0 ? '2px solid rgba(0, 0, 0, 0.08)' : '2px solid #ef4444',
                   borderRadius: '12px',
                   resize: 'vertical',
                   minHeight: '100px',
                   fontSize: '16px',
                   fontFamily: 'inherit',
-                  background: '#f8fafc',
-                  transition: 'all 0.3s ease'
+                  background: timeLeft > 0 ? '#f8fafc' : '#fef2f2',
+                  transition: 'all 0.3s ease',
+                  opacity: timeLeft > 0 ? 1 : 0.6
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6'
-                  e.target.style.background = 'white'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  if (timeLeft > 0) {
+                    e.target.style.borderColor = '#3b82f6'
+                    e.target.style.background = 'white'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.08)'
-                  e.target.style.background = '#f8fafc'
-                  e.target.style.boxShadow = 'none'
+                  if (timeLeft > 0) {
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.08)'
+                    e.target.style.background = '#f8fafc'
+                    e.target.style.boxShadow = 'none'
+                  }
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || timeLeft === 0}
               />
               <button
                 onClick={handleSubmitAnswer}
-                disabled={!currentAnswer.trim() || isSubmitting}
+                disabled={isSubmitting || timeLeft === 0}
                 style={{
                   padding: '16px 24px',
-                  background: currentAnswer.trim() 
-                    ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
+                  background: timeLeft > 0 && currentAnswer.trim()
+                    ? 'linear-gradient(135deg, #3b82f6, #1e40af)' 
+                    : timeLeft === 0
+                    ? '#ef4444'
                     : '#e2e8f0',
-                  color: currentAnswer.trim() ? 'white' : '#94a3b8',
+                  color: timeLeft > 0 && currentAnswer.trim() 
+                    ? 'white' 
+                    : timeLeft === 0
+                    ? 'white'
+                    : '#94a3b8',
                   border: 'none',
                   borderRadius: '12px',
-                  cursor: currentAnswer.trim() ? 'pointer' : 'not-allowed',
+                  cursor: (timeLeft > 0 && currentAnswer.trim()) || timeLeft === 0 ? 'pointer' : 'not-allowed',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   fontWeight: '600',
                   fontSize: '16px',
                   transition: 'all 0.3s ease',
-                  boxShadow: currentAnswer.trim() 
+                  boxShadow: (timeLeft > 0 && currentAnswer.trim()) || timeLeft === 0
                     ? '0 4px 15px rgba(59, 130, 246, 0.3)' 
                     : 'none'
                 }}
                 onMouseOver={(e) => {
-                  if (currentAnswer.trim()) {
+                  if ((timeLeft > 0 && currentAnswer.trim()) || timeLeft === 0) {
                     e.currentTarget.style.transform = 'translateY(-2px)'
                     e.currentTarget.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)'
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (currentAnswer.trim()) {
+                  if ((timeLeft > 0 && currentAnswer.trim()) || timeLeft === 0) {
                     e.currentTarget.style.transform = 'translateY(0)'
                     e.currentTarget.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)'
                   }
@@ -274,6 +311,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ interview, onAnswerSubmit
                   <>
                     <div className="loading-spinner" style={{ width: '16px', height: '16px' }}></div>
                     Submitting...
+                  </>
+                ) : timeLeft === 0 ? (
+                  <>
+                    <Send size={18} />
+                    Submit (Time's Up)
                   </>
                 ) : (
                   <>
