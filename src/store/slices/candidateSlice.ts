@@ -58,9 +58,12 @@ const candidateSlice = createSlice({
         state.currentCandidate.phone = action.payload.phone
         state.currentCandidate.profileComplete = true
       }
+    },
+    resetCurrentCandidate: (state) => {
+      state.currentCandidate = null
     }
   }
 })
 
-export const { addCandidate, updateCandidate, setCurrentCandidate, completeProfile } = candidateSlice.actions
+export const { addCandidate, updateCandidate, setCurrentCandidate, completeProfile, resetCurrentCandidate } = candidateSlice.actions
 export default candidateSlice.reducer

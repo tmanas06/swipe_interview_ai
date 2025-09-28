@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '../store'
 import { setShowResumeUpload, setShowProfileForm, setLoading, setError } from '../store/slices/uiSlice'
-import { addCandidate, completeProfile } from '../store/slices/candidateSlice'
+import { addCandidate, completeProfile, resetCurrentCandidate } from '../store/slices/candidateSlice'
 import { startInterview, answerQuestion, nextQuestion, completeInterview } from '../store/slices/interviewSlice'
 import ResumeUpload from './ResumeUpload'
 import ProfileForm from './ProfileForm'
@@ -18,10 +18,17 @@ const IntervieweeTab: React.FC = () => {
   const [interviewStarted, setInterviewStarted] = useState(false)
 
   useEffect(() => {
-    if (currentCandidate?.profileComplete && !interviewStarted) {
+    // Only start interview if:
+    // 1. There's a current candidate
+    // 2. Profile is complete (name, email, phone)
+    // 3. Resume has been uploaded (has resumeText)
+    // 4. Interview hasn't started yet
+    if (currentCandidate?.profileComplete && 
+        currentCandidate?.resumeText && 
+        !interviewStarted) {
       startInterviewProcess()
     }
-  }, [currentCandidate?.profileComplete])
+  }, [currentCandidate?.profileComplete, currentCandidate?.resumeText])
 
   const handleResumeUploaded = async (resumeData: any) => {
     dispatch(setLoading(true))
@@ -88,14 +95,20 @@ const IntervieweeTab: React.FC = () => {
     const currentQuestion = currentInterview.questions[currentInterview.currentQuestionIndex]
     if (!currentQuestion) return
 
+    console.log('Submitting answer:', answer)
+    console.log('Current question:', currentQuestion.text)
+    
     dispatch(setLoading(true))
     try {
       // Score the answer
+      console.log('Calling AI service to score answer...')
       const scoreResult = await aiService.scoreAnswer(
         currentQuestion.text,
         answer,
         currentQuestion.difficulty
       )
+
+      console.log('Score result:', scoreResult)
 
       dispatch(answerQuestion({
         questionId: currentQuestion.id,
@@ -106,10 +119,14 @@ const IntervieweeTab: React.FC = () => {
 
       // Move to next question or complete interview
       if (currentInterview.currentQuestionIndex < currentInterview.questions.length - 1) {
+        console.log('Moving to next question')
         dispatch(nextQuestion())
       } else {
         // Complete interview
+        console.log('Completing interview...')
         const totalScore = currentInterview.questions.reduce((sum, q) => sum + (q.score || 0), 0)
+        console.log('Total score calculated:', totalScore)
+        
         const summary = await aiService.generateSummary(
           currentInterview.questions.map(q => ({
             text: q.text,
@@ -119,10 +136,13 @@ const IntervieweeTab: React.FC = () => {
           totalScore
         )
 
+        console.log('Summary generated:', summary)
+
         dispatch(completeInterview({ totalScore, summary }))
         setInterviewStarted(false)
       }
     } catch (error) {
+      console.error('Error in handleAnswerSubmit:', error)
       dispatch(setError('Failed to process answer. Please try again.'))
     } finally {
       dispatch(setLoading(false))
@@ -138,6 +158,9 @@ const IntervieweeTab: React.FC = () => {
       </div>
     )
   }
+
+  // Show API key notice if using fallback
+  const showApiNotice = !import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY === 'AIzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI'
 
   if (isLoading) {
     return (
@@ -156,16 +179,88 @@ const IntervieweeTab: React.FC = () => {
   }
 
   if (interviewStarted && currentInterview) {
-    return <ChatInterface interview={currentInterview} onAnswerSubmit={handleAnswerSubmit} />
+    return (
+      <div>
+        {showApiNotice && (
+          <div style={{
+            background: '#fff3cd',
+            border: '1px solid #ffeaa7',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            color: '#856404',
+            fontSize: '14px'
+          }}>
+            <strong>Note:</strong> Using fallback AI scoring system. For enhanced AI feedback, please configure a valid Gemini API key in your .env file.
+          </div>
+        )}
+        <ChatInterface interview={currentInterview} onAnswerSubmit={handleAnswerSubmit} />
+      </div>
+    )
   }
 
+  // If no current candidate or no resume, show upload screen
+  if (!currentCandidate || !currentCandidate.resumeText) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <h2>Welcome to the AI Interview Assistant</h2>
+        <p>Please upload your resume to get started.</p>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px' }}>
+          <button 
+            onClick={() => dispatch(setShowResumeUpload(true))}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            Upload Resume
+          </button>
+          {currentCandidate && (
+            <button 
+              onClick={() => {
+                dispatch(resetCurrentCandidate())
+                dispatch(setShowResumeUpload(true))
+              }}
+              style={{
+                padding: '12px 24px',
+                background: 'transparent',
+                color: '#3b82f6',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Start Fresh
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // If candidate exists but profile is not complete, show profile form
+  if (!currentCandidate.profileComplete) {
+    return <ProfileForm onSubmit={handleProfileComplete} />
+  }
+
+  // If everything is ready but interview hasn't started, show ready message
   return (
     <div style={{ textAlign: 'center', padding: '40px' }}>
-      <h2>Welcome to the AI Interview Assistant</h2>
-      <p>Please upload your resume to get started.</p>
-      <button onClick={() => dispatch(setShowResumeUpload(true))}>
-        Upload Resume
-      </button>
+      <h2>Ready to Start Your Interview!</h2>
+      <p>Your profile is complete. The interview will begin shortly...</p>
+      <div style={{ marginTop: '20px' }}>
+        <div className="loading-spinner" style={{ width: '40px', height: '40px', margin: '0 auto' }}></div>
+      </div>
     </div>
   )
 }

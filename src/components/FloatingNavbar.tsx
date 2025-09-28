@@ -1,7 +1,9 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '../store'
-import { toggleDarkMode } from '../store/slices/uiSlice'
+import { toggleDarkMode, setShowResumeUpload, setShowProfileForm, setActiveTab } from '../store/slices/uiSlice'
+import { resetCurrentCandidate } from '../store/slices/candidateSlice'
+import { setCurrentInterview } from '../store/slices/interviewSlice'
 import { Moon, Sun, User, BarChart3, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -16,11 +18,26 @@ const FloatingNavbar: React.FC = () => {
     setIsMenuOpen(false)
   }
 
+  const handleLogoClick = () => {
+    // Reset all app state to go back to resume upload
+    dispatch(resetCurrentCandidate())
+    dispatch(setCurrentInterview(null))
+    dispatch(setShowResumeUpload(true))
+    dispatch(setShowProfileForm(false))
+    dispatch(setActiveTab('interviewee'))
+    setIsMenuOpen(false)
+  }
+
   return (
     <div className={`floating-navbar ${darkMode ? 'dark' : 'light'}`}>
       <div className="navbar-content">
         {/* Logo/Brand */}
-        <div className="navbar-brand">
+        <div 
+          className="navbar-brand"
+          onClick={handleLogoClick}
+          style={{ cursor: 'pointer' }}
+          title="Go to Home (Resume Upload)"
+        >
           <div className="brand-icon">
             <div className="icon-circle">
               <span>S</span>
