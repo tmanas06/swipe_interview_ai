@@ -4,7 +4,7 @@ import { RootState } from '../store'
 import { toggleDarkMode, setShowResumeUpload, setShowProfileForm, setActiveTab } from '../store/slices/uiSlice'
 import { resetCurrentCandidate } from '../store/slices/candidateSlice'
 import { setCurrentInterview } from '../store/slices/interviewSlice'
-import { Moon, Sun, User, BarChart3, Menu, X } from 'lucide-react'
+import { Moon, Sun, User, BarChart3, Menu, X, Home } from 'lucide-react'
 import { useState } from 'react'
 
 const FloatingNavbar: React.FC = () => {
@@ -44,6 +44,7 @@ const FloatingNavbar: React.FC = () => {
             </div>
           </div>
           <span className="brand-text">Swipe AI</span>
+          <Home size={14} style={{ opacity: 0.7, marginLeft: '4px' }} />
         </div>
 
         {/* Desktop Navigation */}

@@ -14,21 +14,50 @@ const IntervieweeTab: React.FC = () => {
   const { showResumeUpload, showProfileForm, isLoading, error } = useSelector((state: RootState) => state.ui)
   const { currentCandidate } = useSelector((state: RootState) => state.candidates)
   const { currentInterview } = useSelector((state: RootState) => state.interviews)
+  const interviews = useSelector((state: RootState) => state.interviews.interviews)
+  
+  console.log('Redux state:', {
+    currentInterview,
+    interviewsCount: interviews.length,
+    allInterviews: interviews
+  })
 
   const [interviewStarted, setInterviewStarted] = useState(false)
+  const [forceRender, setForceRender] = useState(0)
 
   useEffect(() => {
+    console.log('useEffect triggered:', {
+      hasCandidate: !!currentCandidate,
+      profileComplete: currentCandidate?.profileComplete,
+      hasResumeText: !!currentCandidate?.resumeText,
+      interviewStarted,
+      hasCurrentInterview: !!currentInterview,
+      isInterviewActive: currentInterview?.isActive
+    })
+    
     // Only start interview if:
     // 1. There's a current candidate
     // 2. Profile is complete (name, email, phone)
     // 3. Resume has been uploaded (has resumeText)
     // 4. Interview hasn't started yet
+    // 5. No current interview exists yet
     if (currentCandidate?.profileComplete && 
         currentCandidate?.resumeText && 
-        !interviewStarted) {
+        !interviewStarted &&
+        !currentInterview) {
+      console.log('Starting interview process...')
       startInterviewProcess()
     }
-  }, [currentCandidate?.profileComplete, currentCandidate?.resumeText])
+  }, [currentCandidate?.profileComplete, currentCandidate?.resumeText, interviewStarted, currentInterview])
+
+  // Separate useEffect to handle when interview is created in Redux
+  useEffect(() => {
+    if (currentInterview && currentInterview.isActive && !interviewStarted) {
+      console.log('Interview created in Redux, updating local state')
+      setInterviewStarted(true)
+      setForceRender(prev => prev + 1) // Force re-render
+    }
+  }, [currentInterview, interviewStarted])
 
   const handleResumeUploaded = async (resumeData: any) => {
     dispatch(setLoading(true))
@@ -65,11 +94,18 @@ const IntervieweeTab: React.FC = () => {
   }
 
   const startInterviewProcess = async () => {
-    if (!currentCandidate) return
+    console.log('startInterviewProcess called with candidate:', currentCandidate)
+    if (!currentCandidate) {
+      console.log('No current candidate, returning')
+      return
+    }
 
     dispatch(setLoading(true))
     try {
+      console.log('Generating questions...')
       const questions = await aiService.generateQuestions()
+      console.log('Generated questions:', questions)
+      
       const interviewQuestions = questions.map((q, index) => ({
         id: `q_${index + 1}`,
         text: q.text,
@@ -77,12 +113,21 @@ const IntervieweeTab: React.FC = () => {
         timeLimit: q.timeLimit
       }))
 
+      console.log('Starting interview with questions:', interviewQuestions)
       dispatch(startInterview({
         candidateId: currentCandidate.id,
         questions: interviewQuestions
       }))
+      
+      // Debug: Check Redux state after dispatch
+      setTimeout(() => {
+        console.log('After dispatch - currentInterview:', currentInterview)
+        console.log('After dispatch - isActive:', currentInterview?.isActive)
+      }, 100)
+      
       setInterviewStarted(true)
     } catch (error) {
+      console.error('Error in startInterviewProcess:', error)
       dispatch(setError('Failed to start interview. Please try again.'))
     } finally {
       dispatch(setLoading(false))
@@ -160,7 +205,10 @@ const IntervieweeTab: React.FC = () => {
   }
 
   // Show API key notice if using fallback
-  const showApiNotice = !import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY === 'AIzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI'
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
+  const showApiNotice = !apiKey || 
+    apiKey === 'AIzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI' || 
+    apiKey.length <= 20
 
   if (isLoading) {
     return (
@@ -178,7 +226,21 @@ const IntervieweeTab: React.FC = () => {
     return <ProfileForm onSubmit={handleProfileComplete} />
   }
 
-  if (interviewStarted && currentInterview) {
+  console.log('Render check:', {
+    interviewStarted,
+    hasCurrentInterview: !!currentInterview,
+    currentInterview,
+    isInterviewActive: currentInterview?.isActive,
+    currentInterviewId: currentInterview?.id,
+    questionsCount: currentInterview?.questions?.length,
+    forceRender
+  })
+
+  // Force re-render when interview state changes
+  const interviewKey = currentInterview?.id || 'no-interview'
+  
+  // Try both conditions to see which one works
+  if ((currentInterview && currentInterview.isActive) || (interviewStarted && currentInterview)) {
     return (
       <div>
         {showApiNotice && (
@@ -194,7 +256,7 @@ const IntervieweeTab: React.FC = () => {
             <strong>Note:</strong> Using fallback AI scoring system. For enhanced AI feedback, please configure a valid Gemini API key in your .env file.
           </div>
         )}
-        <ChatInterface interview={currentInterview} onAnswerSubmit={handleAnswerSubmit} />
+        <ChatInterface key={interviewKey} interview={currentInterview} onAnswerSubmit={handleAnswerSubmit} />
       </div>
     )
   }

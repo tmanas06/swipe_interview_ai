@@ -14,14 +14,55 @@ export interface AIScore {
 class AIService {
   private apiKey: string
   private baseUrl: string
+  private isValidApiKey: boolean
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
+    this.apiKey = ''
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
+    this.isValidApiKey = false
+  }
+
+  private isValidApiKeyCheck(): boolean {
+    // Get fresh API key from environment
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
+    
+    // Debug logging
+    console.log('API Key from env:', apiKey)
+    console.log('API Key length:', apiKey.length)
+    
+    // Check if API key is valid (not placeholder)
+    const isPlaceholder = apiKey === 'AIzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI' || 
+                         apiKey === 'IzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI' ||
+                         apiKey === '"IzaSyB5GW2ko7PVYaFIBzDYwHUB5mWHBfHB-NI"'
+    const isTooShort = apiKey.length <= 20
+    const isEmpty = !apiKey
+    const isMalformed = apiKey.includes('"') || !apiKey.startsWith('AI')
+    
+    const isValid = Boolean(apiKey && !isPlaceholder && !isTooShort && !isEmpty && !isMalformed)
+    
+    console.log('API Key validation:', {
+      isEmpty,
+      isPlaceholder,
+      isTooShort,
+      isMalformed,
+      isValid
+    })
+    
+    return isValid
   }
 
   private async makeRequest(endpoint: string, data: any) {
-    const response = await fetch(`${this.baseUrl}${endpoint}?key=${this.apiKey}`, {
+    // Get fresh API key and validate
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
+    
+    // Safety check - don't make API calls with invalid keys
+    if (!this.isValidApiKeyCheck()) {
+      throw new Error('Invalid API key - should use fallback system instead')
+    }
+
+    console.log('Making API request with key:', apiKey.substring(0, 10) + '...')
+    
+    const response = await fetch(`${this.baseUrl}${endpoint}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,9 +78,9 @@ class AIService {
   }
 
   async generateQuestions(): Promise<AIQuestion[]> {
-    // Use demo questions if no API key is provided
-    if (!this.apiKey) {
-      console.log('No API key provided, using demo questions')
+    // Use demo questions if no valid API key is provided
+    if (!this.isValidApiKeyCheck()) {
+      console.log('No valid API key provided, using demo questions')
       return demoQuestions
     }
 
@@ -85,10 +126,11 @@ class AIService {
     console.log('Answer:', answer)
     console.log('Difficulty:', difficulty)
     console.log('API Key available:', !!this.apiKey)
+    console.log('Valid API Key:', this.isValidApiKey)
     
-    // Use fallback scoring if no API key is provided
-    if (!this.apiKey) {
-      console.log('No API key provided, using fallback scoring')
+    // Use fallback scoring if no valid API key is provided
+    if (!this.isValidApiKeyCheck()) {
+      console.log('No valid API key provided, using fallback scoring')
       return this.getFallbackScore(answer, difficulty)
     }
 
@@ -138,10 +180,11 @@ class AIService {
     console.log('Questions count:', questions.length)
     console.log('Total score:', totalScore)
     console.log('API Key available:', !!this.apiKey)
+    console.log('Valid API Key:', this.isValidApiKey)
     
-    // Use fallback summary if no API key is provided
-    if (!this.apiKey) {
-      console.log('No API key provided, using fallback summary')
+    // Use fallback summary if no valid API key is provided
+    if (!this.isValidApiKeyCheck()) {
+      console.log('No valid API key provided, using fallback summary')
       return this.getFallbackSummary(questions, totalScore)
     }
 
