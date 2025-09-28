@@ -5,7 +5,7 @@
 }
 
 .App.light {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
 }
 
 .App.dark {
@@ -56,7 +56,7 @@
 .icon-circle {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -68,7 +68,7 @@
 }
 
 .brand-text {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -310,7 +310,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, #3b82f6, #1e40af);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -492,7 +492,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, #3b82f6, #1e40af);
 }
 
 .question-card:hover {
@@ -539,7 +539,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, #3b82f6, #1e40af);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 10px;
   position: relative;
@@ -594,7 +594,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, #3b82f6, #1e40af);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -612,7 +612,7 @@
 .candidate-score {
   font-size: 28px;
   font-weight: 800;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -701,7 +701,7 @@
 .form-button {
   width: 100%;
   padding: 16px 24px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
   color: white;
   border: none;
   border-radius: 12px;

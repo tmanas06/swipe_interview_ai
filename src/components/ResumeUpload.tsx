@@ -83,7 +83,7 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploaded }) => {
           fontSize: '32px', 
           fontWeight: '800', 
           marginBottom: '12px',
-          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+          background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
