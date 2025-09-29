@@ -5,10 +5,15 @@ import { Search, User, Mail, Phone, Calendar, Star } from 'lucide-react'
 import CandidateDetail from './CandidateDetail'
 
 const InterviewerTab: React.FC = () => {
-  const { candidates, interviews } = useSelector((state: RootState) => state)
+  const candidates = useSelector((state: RootState) => state.candidates)
+  const interviews = useSelector((state: RootState) => state.interviews)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState<'score' | 'name' | 'date'>('score')
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
+
+  // Debug logging
+  console.log('InterviewerTab - Candidates:', candidates)
+  console.log('InterviewerTab - Interviews:', interviews)
 
   // Get candidates with their interview data
   const candidatesWithInterviews = candidates.candidates.map(candidate => {
@@ -17,13 +22,22 @@ const InterviewerTab: React.FC = () => {
     )
     const latestInterview = candidateInterviews[candidateInterviews.length - 1]
     
-    return {
+    const candidateData = {
       ...candidate,
       interview: latestInterview,
       totalScore: latestInterview?.totalScore || 0,
       interviewStatus: latestInterview?.isActive ? 'In Progress' : 
                      latestInterview?.totalScore ? 'Completed' : 'Not Started'
     }
+    
+    console.log(`Candidate ${candidate.name}:`, {
+      candidateInterviews: candidateInterviews.length,
+      latestInterview,
+      totalScore: candidateData.totalScore,
+      interviewStatus: candidateData.interviewStatus
+    })
+    
+    return candidateData
   })
 
   // Filter and sort candidates

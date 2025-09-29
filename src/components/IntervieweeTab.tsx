@@ -180,14 +180,21 @@ const IntervieweeTab: React.FC = () => {
       } else {
         // Complete interview
         console.log('Completing interview...')
-        const totalScore = currentInterview.questions.reduce((sum, q) => sum + (q.score || 0), 0)
-        console.log('Total score calculated:', totalScore)
+        // Calculate total score including the current question's score
+        const currentQuestionScore = scoreResult.score || 0
+        const totalScore = currentInterview.questions.reduce((sum, q) => {
+          if (q.id === currentQuestion.id) {
+            return sum + currentQuestionScore
+          }
+          return sum + (q.score || 0)
+        }, 0)
+        console.log('Total score calculated:', totalScore, 'Current question score:', currentQuestionScore)
         
         const summary = await aiService.generateSummary(
           currentInterview.questions.map(q => ({
             text: q.text,
-            answer: q.answer || '',
-            score: q.score || 0
+            answer: q.id === currentQuestion.id ? answer : (q.answer || ''),
+            score: q.id === currentQuestion.id ? currentQuestionScore : (q.score || 0)
           })),
           totalScore
         )

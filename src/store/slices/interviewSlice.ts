@@ -78,11 +78,25 @@ const interviewSlice = createSlice({
       }
     },
     completeInterview: (state, action: PayloadAction<{ totalScore: number; summary: string }>) => {
+      console.log('completeInterview reducer called with:', action.payload)
       if (state.currentInterview) {
         state.currentInterview.isActive = false
         state.currentInterview.endTime = new Date().toISOString()
         state.currentInterview.totalScore = action.payload.totalScore
         state.currentInterview.summary = action.payload.summary
+        
+        console.log('Updated currentInterview:', state.currentInterview)
+        
+        // Update the interview in the interviews array as well
+        const interviewIndex = state.interviews.findIndex(i => i.id === state.currentInterview!.id)
+        if (interviewIndex !== -1) {
+          state.interviews[interviewIndex] = { ...state.currentInterview }
+          console.log('Updated interview in array at index:', interviewIndex, state.interviews[interviewIndex])
+        } else {
+          console.log('Interview not found in interviews array')
+        }
+      } else {
+        console.log('No currentInterview to complete')
       }
     },
     setCurrentInterview: (state, action: PayloadAction<Interview | null>) => {
