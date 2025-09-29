@@ -236,7 +236,12 @@ const IntervieweeTab: React.FC = () => {
     )
   }
 
-  // Priority 1: Always show resume upload first if no candidate or no resume text
+  // Priority 1: Show resume upload modal if requested
+  if (showResumeUpload) {
+    return <ResumeUpload onUploaded={handleResumeUploaded} />
+  }
+
+  // Priority 2: Always show resume upload first if no candidate or no resume text
   if (!currentCandidate || !currentCandidate.resumeText) {
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -262,11 +267,6 @@ const IntervieweeTab: React.FC = () => {
         </div>
       </div>
     )
-  }
-
-  // Priority 2: Show resume upload modal if requested
-  if (showResumeUpload) {
-    return <ResumeUpload onUploaded={handleResumeUploaded} />
   }
 
   // Priority 3: Show profile form if requested
