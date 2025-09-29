@@ -337,7 +337,7 @@ class AIService {
     
     // Answer quality metrics
     const qualityMetrics = {
-      completeness: this.calculateCompleteness(answer, question),
+      completeness: this.calculateCompleteness(answer),
       clarity: this.calculateClarity(answer, sentences, wordCount),
       technicalDepth: this.calculateTechnicalDepth(answer, matchedCategories),
       relevance: this.calculateRelevance(answer, question)
@@ -395,7 +395,7 @@ class AIService {
     }
   }
 
-  private calculateCompleteness(answer: string, question?: string): number {
+  private calculateCompleteness(answer: string): number {
     // Check if answer addresses common question components
     const hasExplanation = answer.length > 50
     const hasExample = /example|for instance|such as|like/i.test(answer)
