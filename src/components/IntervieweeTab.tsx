@@ -60,6 +60,17 @@ const IntervieweeTab: React.FC = () => {
   }, [currentInterview, interviewStarted])
 
   const handleResumeUploaded = async (resumeData: any) => {
+    console.log('Resume data received:', resumeData)
+    console.log('Profile complete check:', {
+      name: resumeData.name,
+      email: resumeData.email,
+      phone: resumeData.phone,
+      allPresent: Boolean(resumeData.name && resumeData.email && resumeData.phone)
+    })
+    
+    // Clear any existing candidate data to prevent cached issues
+    dispatch(resetCurrentCandidate())
+    
     dispatch(setLoading(true))
     try {
       const candidate = {
@@ -68,7 +79,7 @@ const IntervieweeTab: React.FC = () => {
         email: resumeData.email,
         phone: resumeData.phone,
         resumeText: resumeData.text,
-        profileComplete: resumeData.name && resumeData.email && resumeData.phone,
+        profileComplete: Boolean(resumeData.name && resumeData.email && resumeData.phone),
         interviewComplete: false,
         createdAt: new Date().toISOString()
       }
@@ -218,10 +229,40 @@ const IntervieweeTab: React.FC = () => {
     )
   }
 
+  // Priority 1: Always show resume upload first if no candidate or no resume text
+  if (!currentCandidate || !currentCandidate.resumeText) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <h2>Welcome to the AI Interview Assistant</h2>
+        <p>Please upload your resume to get started.</p>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => dispatch(setShowResumeUpload(true))}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            Upload Resume
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Priority 2: Show resume upload modal if requested
   if (showResumeUpload) {
     return <ResumeUpload onUploaded={handleResumeUploaded} />
   }
 
+  // Priority 3: Show profile form if requested
   if (showProfileForm) {
     return <ProfileForm onSubmit={handleProfileComplete} />
   }
@@ -239,7 +280,7 @@ const IntervieweeTab: React.FC = () => {
   // Force re-render when interview state changes
   const interviewKey = currentInterview?.id || 'no-interview'
   
-  // Try both conditions to see which one works
+  // Priority 4: Show interview questions if interview is active
   if ((currentInterview && currentInterview.isActive) || (interviewStarted && currentInterview)) {
     return (
       <div>
@@ -261,67 +302,68 @@ const IntervieweeTab: React.FC = () => {
     )
   }
 
-  // If no current candidate or no resume, show upload screen
-  if (!currentCandidate || !currentCandidate.resumeText) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <h2>Welcome to the AI Interview Assistant</h2>
-        <p>Please upload your resume to get started.</p>
-        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px' }}>
-          <button 
-            onClick={() => dispatch(setShowResumeUpload(true))}
-            style={{
-              padding: '12px 24px',
-              background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Upload Resume
-          </button>
-          {currentCandidate && (
-            <button 
-              onClick={() => {
-                dispatch(resetCurrentCandidate())
-                dispatch(setShowResumeUpload(true))
-              }}
-              style={{
-                padding: '12px 24px',
-                background: 'transparent',
-                color: '#3b82f6',
-                border: '2px solid #3b82f6',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Start Fresh
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // If candidate exists but profile is not complete, show profile form
+  // Priority 5: If candidate exists but profile is not complete, show profile form
   if (!currentCandidate.profileComplete) {
     return <ProfileForm onSubmit={handleProfileComplete} />
   }
 
-  // If everything is ready but interview hasn't started, show ready message
+  // Priority 6: Show main dashboard with options
   return (
     <div style={{ textAlign: 'center', padding: '40px' }}>
-      <h2>Ready to Start Your Interview!</h2>
-      <p>Your profile is complete. The interview will begin shortly...</p>
-      <div style={{ marginTop: '20px' }}>
-        <div className="loading-spinner" style={{ width: '40px', height: '40px', margin: '0 auto' }}></div>
+      <h2>Ready to Start Your Interview?</h2>
+      <p>You have uploaded your resume. Click below to begin your AI-powered interview.</p>
+      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+        <button 
+          onClick={startInterviewProcess}
+          style={{
+            padding: '12px 24px',
+            background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Start Interview
+        </button>
+        <button 
+          onClick={() => dispatch(setShowResumeUpload(true))}
+          style={{
+            padding: '12px 24px',
+            background: 'transparent',
+            color: '#3b82f6',
+            border: '2px solid #3b82f6',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Update Resume
+        </button>
+        <button 
+          onClick={() => {
+            localStorage.clear()
+            window.location.reload()
+          }}
+          style={{
+            padding: '12px 24px',
+            background: '#ff6b6b',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Clear Cache & Reload
+        </button>
       </div>
     </div>
   )

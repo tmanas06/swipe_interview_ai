@@ -131,17 +131,30 @@ class AIService {
     // Use fallback scoring if no valid API key is provided
     if (!this.isValidApiKeyCheck()) {
       console.log('No valid API key provided, using fallback scoring')
-      return this.getFallbackScore(answer, difficulty)
+      return this.getFallbackScore(answer, difficulty, question)
     }
 
-    const prompt = `Score this interview answer on a scale of 1-10:
+    const prompt = `Score this interview answer on a scale of 1-10 for a full-stack developer position:
     
     Question: ${question}
     Difficulty: ${difficulty}
     Answer: ${answer}
     
-    Consider: technical accuracy, completeness, clarity, and relevance.
-    Return JSON with score (number) and feedback (string).`
+    Evaluation Criteria:
+    1. Technical Accuracy (25%): Correctness of technical concepts and terminology
+    2. Completeness (25%): How well the answer addresses all aspects of the question
+    3. Clarity & Communication (20%): How clearly and logically the answer is presented
+    4. Depth & Detail (20%): Level of technical detail and real-world examples
+    5. Relevance (10%): How directly the answer relates to the question asked
+    
+    Scoring Guidelines:
+    - 9-10: Exceptional technical expertise, comprehensive coverage, excellent examples
+    - 7-8: Strong technical knowledge, good coverage, clear explanations
+    - 5-6: Solid technical understanding, adequate coverage, some examples
+    - 3-4: Basic technical knowledge, incomplete coverage, needs more detail
+    - 1-2: Limited technical understanding, poor coverage, minimal detail
+    
+    Return JSON with score (number) and feedback (string). The feedback should be specific, constructive, and actionable.`
 
     try {
       const data = {
@@ -168,10 +181,10 @@ class AIService {
       }
       
       // Fallback scoring
-      return this.getFallbackScore(answer, difficulty)
+      return this.getFallbackScore(answer, difficulty, question)
     } catch (error) {
       console.error('Error scoring answer:', error)
-      return this.getFallbackScore(answer, difficulty)
+      return this.getFallbackScore(answer, difficulty, question)
     }
   }
 
@@ -188,13 +201,21 @@ class AIService {
       return this.getFallbackSummary(questions, totalScore)
     }
 
-    const prompt = `Generate a brief interview summary for a full-stack developer candidate:
+    const prompt = `Generate a comprehensive interview summary for a full-stack developer candidate:
     
-    Total Score: ${totalScore}/60
+    Total Score: ${totalScore}/60 (Average: ${(totalScore/questions.length).toFixed(1)}/10)
     Questions and Answers:
-    ${questions.map((q, i) => `${i + 1}. ${q.text}\nAnswer: ${q.answer}\nScore: ${q.score}/10`).join('\n\n')}
+    ${questions.map((q, i) => `${i + 1}. Q: ${q.text}\n   A: ${q.answer}\n   Score: ${q.score}/10`).join('\n\n')}
     
-    Provide a concise summary highlighting strengths, areas for improvement, and overall assessment.`
+    Please provide a detailed assessment including:
+    1. Overall Performance Rating (Excellent/Good/Average/Needs Improvement)
+    2. Technical Strengths demonstrated in the interview
+    3. Areas for improvement and development
+    4. Specific recommendations for the candidate's growth
+    5. Suitability assessment for full-stack developer role
+    6. Next steps or follow-up recommendations
+    
+    Format the summary professionally with clear sections and actionable insights.`
 
     try {
       const data = {
@@ -254,80 +275,242 @@ class AIService {
     ]
   }
 
-  private getFallbackScore(answer: string, difficulty: 'easy' | 'medium' | 'hard'): AIScore {
-    console.log('Using fallback scoring system')
+  private getFallbackScore(answer: string, difficulty: 'easy' | 'medium' | 'hard', question?: string): AIScore {
+    console.log('Using enhanced fallback scoring system')
     
     // Enhanced fallback scoring based on multiple factors
     const length = answer.length
     const wordCount = answer.split(/\s+/).filter(word => word.length > 0).length
+    const sentences = answer.split(/[.!?]+/).filter(s => s.trim().length > 0).length
     
-    // Technical keywords for different categories
-    const frontendKeywords = ['react', 'component', 'state', 'props', 'jsx', 'hooks', 'useeffect', 'usestate', 'rendering', 'virtual dom', 'browser', 'dom', 'css', 'html']
-    const backendKeywords = ['node', 'api', 'database', 'server', 'express', 'mongodb', 'sql', 'rest', 'graphql', 'middleware', 'authentication', 'authorization']
-    const generalKeywords = ['javascript', 'typescript', 'async', 'promise', 'callback', 'function', 'variable', 'array', 'object', 'json', 'http', 'https']
+    // Comprehensive technical keywords with weighted scoring
+    const keywordCategories = {
+      frontend: {
+        keywords: [
+          'react', 'component', 'state', 'props', 'jsx', 'hooks', 'useeffect', 'usestate', 
+          'rendering', 'virtual dom', 'browser', 'dom', 'css', 'html', 'javascript', 'typescript',
+          'angular', 'vue', 'svelte', 'nextjs', 'gatsby', 'webpack', 'babel', 'eslint',
+          'tailwind', 'bootstrap', 'material-ui', 'styled-components', 'sass', 'less'
+        ],
+        weight: 1.2
+      },
+      backend: {
+        keywords: [
+          'node', 'api', 'database', 'server', 'express', 'mongodb', 'sql', 'rest', 'graphql',
+          'middleware', 'authentication', 'authorization', 'jwt', 'oauth', 'redis', 'postgresql',
+          'mysql', 'nosql', 'microservices', 'docker', 'kubernetes', 'aws', 'azure', 'gcp',
+          'nginx', 'apache', 'load balancing', 'caching', 'session', 'cookie'
+        ],
+        weight: 1.3
+      },
+      general: {
+        keywords: [
+          'async', 'promise', 'callback', 'function', 'variable', 'array', 'object', 'json',
+          'http', 'https', 'tcp', 'udp', 'websocket', 'algorithm', 'data structure', 'recursion',
+          'iteration', 'loop', 'conditional', 'exception', 'error handling', 'logging', 'testing',
+          'unit test', 'integration test', 'debugging', 'performance', 'optimization', 'security'
+        ],
+        weight: 1.0
+      },
+      architecture: {
+        keywords: [
+          'design pattern', 'mvc', 'mvp', 'mvvm', 'singleton', 'factory', 'observer', 'mvc',
+          'microservices', 'monolith', 'soa', 'event-driven', 'pub-sub', 'caching', 'scalability',
+          'availability', 'reliability', 'maintainability', 'testability', 'deployment', 'ci/cd'
+        ],
+        weight: 1.5
+      }
+    }
     
-    const allKeywords = [...frontendKeywords, ...backendKeywords, ...generalKeywords]
-    const keywordCount = allKeywords.filter(keyword => 
-      answer.toLowerCase().includes(keyword)
-    ).length
+    // Calculate weighted keyword score
+    let keywordScore = 0
+    let matchedCategories = new Set<string>()
+    const answerLower = answer.toLowerCase()
     
-    // Calculate base score
+    Object.entries(keywordCategories).forEach(([category, data]) => {
+      const matches = data.keywords.filter(keyword => answerLower.includes(keyword))
+      if (matches.length > 0) {
+        matchedCategories.add(category)
+        keywordScore += matches.length * data.weight
+      }
+    })
+    
+    // Answer quality metrics
+    const qualityMetrics = {
+      completeness: this.calculateCompleteness(answer, question),
+      clarity: this.calculateClarity(answer, sentences, wordCount),
+      technicalDepth: this.calculateTechnicalDepth(answer, matchedCategories),
+      relevance: this.calculateRelevance(answer, question)
+    }
+    
+    // Calculate base score with improved algorithm
     let score = 1
     
-    // Length scoring (0-4 points)
-    if (length > 100) score += 2
+    // Length and structure scoring (0-3 points)
+    if (length > 200) score += 3
+    else if (length > 100) score += 2
     else if (length > 50) score += 1
-    else if (length < 10) score -= 1
+    else if (length < 20) score -= 1
     
-    // Word count scoring (0-2 points)
-    if (wordCount > 20) score += 2
-    else if (wordCount > 10) score += 1
+    // Word density scoring (0-2 points)
+    if (wordCount > 30) score += 2
+    else if (wordCount > 15) score += 1
     else if (wordCount < 5) score -= 1
     
-    // Keyword scoring (0-3 points)
-    if (keywordCount > 5) score += 3
-    else if (keywordCount > 2) score += 2
-    else if (keywordCount > 0) score += 1
+    // Sentence structure scoring (0-1 point)
+    if (sentences > 2) score += 1
     
-    // Difficulty adjustment
+    // Enhanced keyword scoring (0-4 points)
+    if (keywordScore > 8) score += 4
+    else if (keywordScore > 5) score += 3
+    else if (keywordScore > 2) score += 2
+    else if (keywordScore > 0) score += 1
+    
+    // Quality metrics scoring (0-3 points)
+    const avgQuality = Object.values(qualityMetrics).reduce((sum, val) => sum + val, 0) / 4
+    score += Math.round(avgQuality * 3)
+    
+    // Difficulty adjustment with better scaling
     if (difficulty === 'easy') {
-      score = Math.min(10, score + 1)
+      score = Math.min(10, score + 0.5)
+    } else if (difficulty === 'medium') {
+      score = Math.max(1, score - 0.2)
     } else if (difficulty === 'hard') {
-      score = Math.max(1, score - 1)
+      score = Math.max(1, score - 0.8)
+      // Bonus for hard questions with good technical depth
+      if (qualityMetrics.technicalDepth > 0.7) score += 1
     }
     
     // Ensure score is between 1-10
-    score = Math.min(10, Math.max(1, score))
+    score = Math.min(10, Math.max(1, Math.round(score)))
     
-    // Generate contextual feedback
-    let feedback = ''
-    if (score >= 8) {
-      feedback = 'Excellent answer! Shows strong technical understanding and comprehensive coverage of the topic.'
-    } else if (score >= 6) {
-      feedback = 'Good answer with solid technical knowledge. Consider adding more specific examples or details.'
-    } else if (score >= 4) {
-      feedback = 'Decent answer but could be improved. Try to include more technical details and specific examples.'
-    } else {
-      feedback = 'Answer needs improvement. Consider providing more detailed technical explanations and specific examples.'
-    }
+    // Generate enhanced contextual feedback
+    const feedback = this.generateEnhancedFeedback(score, qualityMetrics, matchedCategories, difficulty, length, keywordScore)
     
-    // Add specific suggestions based on content
-    if (keywordCount === 0) {
-      feedback += ' Try to include more technical terminology relevant to the question.'
-    }
-    if (length < 20) {
-      feedback += ' Consider expanding your answer with more details and examples.'
-    }
-    if (difficulty === 'hard' && score < 6) {
-      feedback += ' For advanced questions, provide more in-depth technical analysis and real-world examples.'
-    }
-
-    console.log(`Fallback scoring: length=${length}, words=${wordCount}, keywords=${keywordCount}, difficulty=${difficulty}, score=${score}`)
+    console.log(`Enhanced fallback scoring: length=${length}, words=${wordCount}, sentences=${sentences}, keywordScore=${keywordScore.toFixed(2)}, quality=${avgQuality.toFixed(2)}, difficulty=${difficulty}, score=${score}`)
     
     return {
       score,
       feedback
     }
+  }
+
+  private calculateCompleteness(answer: string, question?: string): number {
+    // Check if answer addresses common question components
+    const hasExplanation = answer.length > 50
+    const hasExample = /example|for instance|such as|like/i.test(answer)
+    const hasDetail = answer.split(/\s+/).length > 15
+    const hasTechnicalTerms = /[A-Z]{2,}|[a-z]+(?:ing|tion|sion|ment)$/i.test(answer)
+    
+    let completeness = 0
+    if (hasExplanation) completeness += 0.3
+    if (hasExample) completeness += 0.3
+    if (hasDetail) completeness += 0.2
+    if (hasTechnicalTerms) completeness += 0.2
+    
+    return Math.min(1, completeness)
+  }
+
+  private calculateClarity(answer: string, sentences: number, wordCount: number): number {
+    // Assess clarity based on structure and readability
+    const avgWordsPerSentence = wordCount / Math.max(sentences, 1)
+    const hasStructure = /first|second|third|next|then|finally|also|additionally/i.test(answer)
+    const hasConnectors = /however|therefore|because|since|although|moreover/i.test(answer)
+    
+    let clarity = 0.5 // base score
+    
+    // Optimal sentence length (not too short, not too long)
+    if (avgWordsPerSentence >= 8 && avgWordsPerSentence <= 25) clarity += 0.3
+    else if (avgWordsPerSentence >= 5 && avgWordsPerSentence <= 30) clarity += 0.1
+    
+    if (hasStructure) clarity += 0.2
+    if (hasConnectors) clarity += 0.2
+    
+    return Math.min(1, clarity)
+  }
+
+  private calculateTechnicalDepth(answer: string, matchedCategories: Set<string>): number {
+    // Assess technical depth based on categories and complexity
+    let depth = 0
+    
+    if (matchedCategories.has('architecture')) depth += 0.4
+    if (matchedCategories.has('backend')) depth += 0.3
+    if (matchedCategories.has('frontend')) depth += 0.2
+    if (matchedCategories.has('general')) depth += 0.1
+    
+    // Check for advanced concepts
+    const advancedConcepts = /algorithm|complexity|optimization|scalability|security|performance|architecture/i
+    if (advancedConcepts.test(answer)) depth += 0.2
+    
+    return Math.min(1, depth)
+  }
+
+  private calculateRelevance(answer: string, question?: string): number {
+    if (!question) return 0.5
+    
+    // Simple relevance check based on keyword overlap
+    const questionWords = question.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+    const answerWords = answer.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+    
+    const overlap = questionWords.filter(word => answerWords.includes(word)).length
+    const relevance = Math.min(1, overlap / Math.max(questionWords.length, 1))
+    
+    return relevance
+  }
+
+  private generateEnhancedFeedback(score: number, qualityMetrics: any, matchedCategories: Set<string>, difficulty: string, length: number, keywordScore: number): string {
+    let feedback = ''
+    
+    // Base feedback based on score
+    if (score >= 9) {
+      feedback = 'Outstanding answer! Demonstrates exceptional technical expertise with comprehensive coverage and clear explanations.'
+    } else if (score >= 7) {
+      feedback = 'Excellent answer! Shows strong technical understanding with good depth and clarity.'
+    } else if (score >= 5) {
+      feedback = 'Good answer with solid technical knowledge. Consider adding more specific examples or expanding on key concepts.'
+    } else if (score >= 3) {
+      feedback = 'Decent answer but needs improvement. Try to include more technical details, examples, and explanations.'
+    } else {
+      feedback = 'Answer needs significant improvement. Consider providing more detailed technical explanations with specific examples.'
+    }
+    
+    // Specific improvement suggestions
+    const suggestions = []
+    
+    if (qualityMetrics.completeness < 0.5) {
+      suggestions.push('Provide more comprehensive explanations with examples')
+    }
+    
+    if (qualityMetrics.clarity < 0.5) {
+      suggestions.push('Improve answer structure and clarity with better organization')
+    }
+    
+    if (qualityMetrics.technicalDepth < 0.4) {
+      suggestions.push('Include more technical details and advanced concepts')
+    }
+    
+    if (keywordScore < 2) {
+      suggestions.push('Use more relevant technical terminology')
+    }
+    
+    if (length < 50) {
+      suggestions.push('Expand your answer with more detailed explanations')
+    }
+    
+    if (difficulty === 'hard' && score < 7) {
+      suggestions.push('For advanced questions, provide deeper technical analysis with real-world examples')
+    }
+    
+    if (suggestions.length > 0) {
+      feedback += ' ' + suggestions.join('. ') + '.'
+    }
+    
+    // Positive reinforcement
+    if (matchedCategories.size > 2) {
+      feedback += ' Great job covering multiple technical areas!'
+    }
+    
+    return feedback
   }
 
   private getFallbackSummary(questions: Array<{text: string, answer: string, score: number}>, totalScore: number): string {
